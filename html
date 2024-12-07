@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Insulin Conversion Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        .tabs button {
+            background: #f5f5f5;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            outline: none;
+        }
+        .tabs button.active {
+            background: #fff;
+            border-bottom: 2px solid #2196f3;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        #currentInsulinSection {
+            background-color: #e0f7fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        #targetInsulinSection {
+            background-color: #fce4ec;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        select, input[type="number"], input[type="radio"] {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+        }
+
+        .dose-times {
+            margin-top: 10px;
+        }
+
+        .dose-times div {
+            margin-bottom: 5px;
+        }
+
+        #result {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .warning {
+            color: red;
+        }
+
+        .calc-details {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .reduction-options {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .reduction-options label {
+            display: inline-block;
+            width: auto;
+            margin-top: 0px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="tabs">
+    <button class="tablink active" data-tab="conversionTab">Conversion Tool</button>
+    <button class="tablink" data-tab="initiationTab">Initiation Guidance</button>
+    <button class="tablink" data-tab="adjustmentTab">Adjustment Guidelines</button>
+</div>
+
+<div id="conversionTab" class="tab-content active">
+    <h1>Insulin Conversion Tool</h1>
+
+    <div class="section">
+        <h2>Current Regime</h2>
+        <label for="currentRegime">Select Current Regime:</label>
+        <select id="currentRegime">
+            <option value="">--Select Regime--</option>
+            <option value="basal">Basal Insulin</option>
+            <option value="basal_bolus">Basal Plus/Basal Bolus</option>
+            <option value="premixed">Premixed Insulin</option>
+            <option value="rapid">Rapid Acting Insulin Only</option>
+        </select>
+    </div>
+
+    <div class="section" id="currentInsulinSection" style="display:none;">
+        <h2>Current Insulin Details</h2>
+        <div id="currentInsulinInputs"></div>
+    </div>
+
+    <div class="section">
+        <h2>Target Regime</h2>
+        <label for="targetRegime">Select Target Regime:</label>
+        <select id="targetRegime">
+            <option value="">--Select Regime--</option>
+            <option value="basal">Basal Insulin</option>
+            <option value="basal_bolus">Basal Plus/Basal Bolus</option>
+            <option value="premixed">Premixed Insulin</option>
+            <option value="rapid">Rapid Acting Insulin Only</option>
+        </select>
+    </div>
+
+    <div class="section" id="targetInsulinSection" style="display:none;">
+        <h2>Target Insulin Details</h2>
+        <div id="targetInsulinInputs"></div>
+    </div>
+
+    <div class="section">
+        <h2>Reduction Factor</h2>
+        <p>Select the reduction factor to apply to the total daily dose when converting (unless overridden by Toujeo conversions):</p>
+        <div class="reduction-options">
+            <div>
+                <input type="radio" name="reductionFactor" value="1.0" id="rf0">
+                <label for="rf0">No reduction (1:1)</label>
+            </div>
+            <div>
+                <input type="radio" name="reductionFactor" value="0.9" id="rf10">
+                <label for="rf10">10% reduction</label>
+            </div>
+            <div>
+                <input type="radio" name="reductionFactor" value="0.8" id="rf20" checked>
+                <label for="rf20">20% reduction</label>
+            </div>
+        </div>
+    </div>
+
+    <button id="calculateBtn">Calculate</button>
+
+    <div class="section" id="resultSection" style="display:none;">
+        <h2>Conversion Result</h2>
+        <div id="result"></div>
+    </div>
+</div>
+
+<div id="initiationTab" class="tab-content">
+    <h2>Initiation Guidance (Placeholder)</h2>
+    <p>Provide initiation guidance here if needed.</p>
+</div>
+
+<div id="adjustmentTab" class="tab-content">
+    <h2>Adjustment Guidelines (Placeholder)</h2>
+    <p>Provide adjustment guidance here if needed.</p>
+</div>
+
+<script>
+    // Tab logic
+    document.querySelectorAll('.tablink').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tablink').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const tab = btn.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+        });
+    });
+
+    const allInsulins = [
+        // Basal
+        { name: "Levemir (Insulin detemir)", category: "basal", frequency: ["Once daily","Twice daily"], devices: ["Levemir FlexPen","Levemir InnoLet","Levemir Penfill"], glargine100equivalent:false, toujeo:false },
+        { name: "Abasaglar (Insulin glargine)", category: "basal", frequency: ["Once daily"], devices: ["Abasaglar KwikPen","Abasaglar Cartridge"], glargine100equivalent:true, toujeo:false },
+        { name: "Lantus (Insulin glargine)", category: "basal", frequency: ["Once daily"], devices: ["Lantus SoloStar","Lantus Cartridge","Lantus Vial"], glargine100equivalent:true, toujeo:false },
+        { name: "Semglee (Insulin glargine biosimilar)", category: "basal", frequency: ["Once daily"], devices: ["Semglee Pre-filled pen"], glargine100equivalent:true, toujeo:false },
+        { name: "Toujeo (Insulin glargine 300u)", category: "basal", frequency: ["Once daily"], devices: ["Toujeo SoloStar","Toujeo DoubleStar"], glargine100equivalent:false, toujeo:true },
+        { name: "Tresiba (Insulin degludec)", category: "basal", frequency: ["Once daily"], devices: ["Tresiba FlexTouch U100","Tresiba Penfill U100","Tresiba FlexTouch U200"], glargine100equivalent:false, toujeo:false },
+        { name: "Humulin I (Isophane insulin)", category: "basal", frequency: ["Once daily","Twice daily"], devices: ["Humulin I Vial","Humulin I Cartridge","Humulin I KwikPen"], glargine100equivalent:false, toujeo:false },
+        { name: "Insulatard (Isophane insulin)", category: "basal", frequency: ["Once daily","Twice daily"], devices: ["Insulatard Vial","Insulatard Penfill"], glargine100equivalent:false, toujeo:false },
+
+        // Rapid
+        { name: "Fiasp (Insulin aspart)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["Fiasp Vial","Fiasp FlexTouch","Fiasp Penfill"]},
+        { name: "NovoRapid (Insulin aspart)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["NovoRapid FlexPen","NovoRapid Penfill"]},
+        { name: "Apidra (Insulin glulisine)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["Apidra Vial"]},
+        { name: "Admelog (Insulin lispro)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["Admelog Vial","Admelog Cartridge"]},
+        { name: "Humalog (Insulin lispro)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["Humalog Vial","Humalog Cartridge","Humalog KwikPen 100u","Humalog Junior KwikPen","Humalog KwikPen 200u"]},
+        { name: "Humulin S (Soluble insulin)", category: "rapid", frequency: ["Three times daily before meals"], devices: ["Humulin S Vial","Humulin S Cartridge"]},
+
+        // Premixed
+        { name: "Humulin M3 (Biphasic isophane)", category: "premixed", frequency: ["Twice daily","Three times daily"], devices: ["Humulin M3 Vial","Humulin M3 Cartridge","Humulin M3 KwikPen"]},
+        { name: "Hypurin Porcine Mix (Biphasic isophane)", category: "premixed", frequency: ["Twice daily","Three times daily"], devices: ["Hypurin Porcine Mix Vial"]},
+        { name: "NovoMix 30 (Biphasic insulin aspart)", category: "premixed", frequency: ["Twice daily","Three times daily"], devices: ["NovoMix 30 FlexPen","NovoMix 30 Penfill"]},
+        { name: "Humalog Mix25 (Biphasic insulin lispro)", category: "premixed", frequency: ["Twice daily","Three times daily"], devices: ["Humalog Mix25 Vial","Humalog Mix25 Cartridge","Humalog Mix25 KwikPen"]},
+        { name: "Humalog Mix50 (Biphasic insulin lispro)", category: "premixed", frequency: ["Twice daily","Three times daily"], devices: ["Humalog Mix50 Vial","Humalog Mix50 Cartridge","Humalog Mix50 KwikPen"]}
+    ];
+
+    const dosageTimes = ["Morning", "Lunch", "Evening", "Bedtime"];
+
+    document.getElementById('currentRegime').addEventListener('change', handleCurrentRegimeChange);
+    document.getElementById('targetRegime').addEventListener('change', handleTargetRegimeChange);
+    document.getElementById('calculateBtn').addEventListener('click', calculateConversion);
+
+    function filterInsulinsByCategory(category) {
+        return allInsulins.filter(i => i.category === category);
+    }
+
+    function handleCurrentRegimeChange() {
+        const regime = document.getElementById('currentRegime').value;
+        const section = document.getElementById('currentInsulinSection');
+        const inputsDiv = document.getElementById('currentInsulinInputs');
+        inputsDiv.innerHTML = '';
+        if (regime) {
+            section.style.display = 'block';
+            if (regime === 'basal') {
+                createInsulinInput('current', 'basal');
+            } else if (regime === 'rapid') {
+                createInsulinInput('current', 'rapid');
+            } else if (regime === 'premixed') {
+                createInsulinInput('current', 'premixed');
+            } else if (regime === 'basal_bolus') {
+                createInsulinInput('current', 'basal');
+                createInsulinInput('current', 'rapid');
+            }
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    function handleTargetRegimeChange() {
+        const regime = document.getElementById('targetRegime').value;
+        const section = document.getElementById('targetInsulinSection');
+        const inputsDiv = document.getElementById('targetInsulinInputs');
+        inputsDiv.innerHTML = '';
+        if (regime) {
+            section.style.display = 'block';
+            if (regime === 'basal') {
+                createInsulinInput('target', 'basal', true);
+            } else if (regime === 'rapid') {
+                createInsulinInput('target', 'rapid', true);
+            } else if (regime === 'premixed') {
+                createInsulinInput('target', 'premixed', true);
+            } else if (regime === 'basal_bolus') {
+                createInsulinInput('target', 'basal', true);
+                createInsulinInput('target', 'rapid', true);
+            }
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    function createInsulinInput(prefix, type, isTarget = false) {
+        const inputsDiv = document.getElementById(prefix + 'InsulinInputs');
+        const insulinList = filterInsulinsByCategory(type);
+
+        const container = document.createElement('div');
+        container.classList.add('section');
+
+        const label = document.createElement('label');
+        label.textContent = 'Select ' + (type.charAt(0).toUpperCase() + type.slice(1)) + ' Insulin:';
+        container.appendChild(label);
+
+        const select = document.createElement('select');
+        select.id = prefix + '_' + type + '_insulin';
+        select.innerHTML = '<option value="">--Select Insulin--</option>';
+        insulinList.forEach(insulin => {
+            const option = document.createElement('option');
+            option.value = insulin.name;
+            option.textContent = insulin.name;
+            select.appendChild(option);
+        });
+        container.appendChild(select);
+
+        if (!isTarget) {
+            const dosageTimesDiv = document.createElement('div');
+            dosageTimesDiv.classList.add('dose-times');
+            dosageTimes.forEach(time => {
+                const timeDiv = document.createElement('div');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = prefix + '_' + type + '_' + time.toLowerCase() + '_check';
+                checkbox.value = time;
+
+                const timeLabel = document.createElement('label');
+                timeLabel.textContent = time;
+                timeLabel.htmlFor = checkbox.id;
+
+                const doseInput = document.createElement('input');
+                doseInput.type = 'number';
+                doseInput.id = prefix + '_' + type + '_' + time.toLowerCase() + '_dose';
+                doseInput.min = 0;
+                doseInput.placeholder = 'Units';
+                doseInput.style.display = 'none';
+
+                checkbox.addEventListener('change', function() {
+                    if (checkbox.checked) {
+                        doseInput.style.display = 'inline-block';
+                    } else {
+                        doseInput.style.display = 'none';
+                        doseInput.value = '';
+                    }
+                });
+
+                timeDiv.appendChild(checkbox);
+                timeDiv.appendChild(timeLabel);
+                timeDiv.appendChild(doseInput);
+                dosageTimesDiv.appendChild(timeDiv);
+            });
+            container.appendChild(dosageTimesDiv);
+        } else {
+            const freqLabel = document.createElement('label');
+            freqLabel.textContent = 'Select Dosing Frequency:';
+            container.appendChild(freqLabel);
+
+            const freqSelect = document.createElement('select');
+            freqSelect.id = prefix + '_' + type + '_frequency';
+            freqSelect.innerHTML = '<option value="">--Select Frequency--</option>';
+            container.appendChild(freqSelect);
+
+            select.addEventListener('change', function() {
+                const selectedInsulin = insulinList.find(i => i.name === select.value);
+                freqSelect.innerHTML = '<option value="">--Select Frequency--</option>';
+                if (selectedInsulin) {
+                    selectedInsulin.frequency.forEach(freq => {
+                        const option = document.createElement('option');
+                        option.value = freq;
+                        option.textContent = freq;
+                        freqSelect.appendChild(option);
+                    });
+                }
+            });
+        }
+
+        inputsDiv.appendChild(container);
+    }
+
+    function getCurrentDoses(type) {
+        let doses = [];
+        for (let time of dosageTimes) {
+            const checkbox = document.getElementById(`current_${type}_${time.toLowerCase()}_check`);
+            if (checkbox && checkbox.checked) {
+                const doseInput = document.getElementById(`current_${type}_${time.toLowerCase()}_dose`);
+                const amount = parseFloat(doseInput.value);
+                if (isNaN(amount) || amount <= 0) {
+                    alert(`Please enter a valid dose for ${time} ${type} insulin.`);
+                    return null;
+                }
+                doses.push({ time: time, amount: amount });
+            }
+        }
+        return doses;
+    }
+
+    function getFrequencyCount(frequency) {
+        if (!frequency) return 0;
+        let f = frequency.toLowerCase();
+        if (f.includes('once')) return 1;
+        if (f.includes('twice')) return 2;
+        if (f.includes('three')) return 3;
+        return 1;
+    }
+
+    function isTimeInFrequency(time, frequency) {
+        if (!frequency) return false;
+        const f = frequency.toLowerCase();
+        if (f.includes('once')) {
+            return time === 'Morning';
+        }
+        if (f.includes('twice')) {
+            return (time === 'Morning' || time === 'Evening');
+        }
+        if (f.includes('three')) {
+            return (time === 'Morning' || time === 'Lunch' || time === 'Evening');
+        }
+        return false;
+    }
+
+    function getInsulinDataByName(name) {
+        return allInsulins.find(i => i.name === name);
+    }
+
+    function applyToujeoRules(currentInsulinObj, targetInsulinObj, currentRegime, targetRegime, chosenReduction, totalDose) {
+        let note = '';
+        if (currentInsulinObj && targetInsulinObj) {
+            const fromToujeo = currentInsulinObj.toujeo;
+            const toToujeo = targetInsulinObj.toujeo;
+            const fromGlargine100 = currentInsulinObj.glargine100equivalent;
+            const toGlargine100 = targetInsulinObj.glargine100equivalent;
+
+            if (fromGlargine100 && toToujeo) {
+                note += `<p><em>Note: Converting from insulin glargine 100u/ml to Toujeo. Usually unit-to-unit, but may need 10-18% more Toujeo to achieve targets. Monitor closely.</em></p>`;
+            } else if (fromToujeo && toGlargine100) {
+                chosenReduction = 0.8;
+                note += `<p><em>Note: Converting from Toujeo to insulin glargine 100u/ml requires ~20% dose reduction to reduce hypoglycemia risk. This override has been applied.</em></p>`;
+            } else if (toToujeo && currentRegime==='basal') {
+                const targetFreq = document.getElementById('target_basal_frequency')?.value;
+                if (targetFreq && targetFreq.toLowerCase().includes('once')) {
+                    const doses = getCurrentDoses('basal');
+                    if (doses && doses.length === 2 && getFrequencyCount(targetFreq)===1) {
+                        chosenReduction = 0.8;
+                        note += `<p><em>Note: Switching from twice-daily basal to once-daily Toujeo: start at 80% of previous TDD.</em></p>`;
+                    } else {
+                        note += `<p><em>Note: Switching once-daily basal to once-daily Toujeo can be done unit-to-unit. Monitor closely.</em></p>`;
+                        chosenReduction = 1.0;
+                    }
+                }
+            }
+        }
+        return {chosenReduction, note};
+    }
+
+    function getPremixRatio(insulinName) {
+        insulinName = insulinName.toLowerCase();
+        if (insulinName.includes("humulin m3")) {
+            return {rapidOrShort:0.3, intermediate:0.7, name:"30% short-acting / 70% intermediate-acting"};
+        } else if (insulinName.includes("hypurin porcine mix")) {
+            return {rapidOrShort:0.3, intermediate:0.7, name:"30% short-acting / 70% intermediate-acting"};
+        } else if (insulinName.includes("novomix 30")) {
+            return {rapidOrShort:0.3, intermediate:0.7, name:"30% rapid-acting / 70% intermediate-acting"};
+        } else if (insulinName.includes("humalog mix50")) {
+            return {rapidOrShort:0.5, intermediate:0.5, name:"50% rapid-acting / 50% intermediate-acting"};
+        } else if (insulinName.includes("humalog mix25")) {
+            return {rapidOrShort:0.25, intermediate:0.75, name:"25% rapid-acting / 75% intermediate-acting"};
+        }
+        // Default if unknown:
+        return {rapidOrShort:0.3, intermediate:0.7, name:"30% rapid/short-acting / 70% intermediate-acting"};
+    }
+
+    document.getElementById('calculateBtn').addEventListener('click', calculateConversion);
+
+    function calculateConversion() {
+        const currentRegime = document.getElementById('currentRegime').value;
+        const targetRegime = document.getElementById('targetRegime').value;
+
+        if (!currentRegime || !targetRegime) {
+            alert('Please select both current and target regimes.');
+            return;
+        }
+
+        const reductionRadios = document.getElementsByName('reductionFactor');
+        let chosenReduction = 0.8; // default 20%
+        for (let r of reductionRadios) {
+            if (r.checked) {
+                chosenReduction = parseFloat(r.value);
+                break;
+            }
+        }
+
+        const currentBasalInsulin = document.getElementById('current_basal_insulin')?.value;
+        const currentRapidInsulin = document.getElementById('current_rapid_insulin')?.value;
+        const targetBasalInsulin = document.getElementById('target_basal_insulin')?.value;
+        const targetRapidInsulin = document.getElementById('target_rapid_insulin')?.value;
+        const currentPremixedInsulin = document.getElementById('current_premixed_insulin')?.value;
+        const targetPremixedInsulin = document.getElementById('target_premixed_insulin')?.value;
+
+        let likeForLike = false;
+        if (currentRegime === targetRegime) {
+            if (currentRegime === 'basal' && currentBasalInsulin && targetBasalInsulin && currentBasalInsulin === targetBasalInsulin) likeForLike = true;
+            if (currentRegime === 'rapid' && currentRapidInsulin && targetRapidInsulin && currentRapidInsulin === targetRapidInsulin) likeForLike = true;
+            if (currentRegime === 'premixed' && currentPremixedInsulin && targetPremixedInsulin && currentPremixedInsulin === targetPremixedInsulin) likeForLike = true;
+            if (currentRegime === 'basal_bolus' && currentBasalInsulin && currentRapidInsulin && targetBasalInsulin && targetRapidInsulin &&
+                currentBasalInsulin===targetBasalInsulin && currentRapidInsulin===targetRapidInsulin) likeForLike = true;
+        }
+
+        let note = '';
+        if (likeForLike) {
+            note += '<p><em>You are converting like-for-like. A 1:1 conversion is often possible. Consider choosing "No reduction" if clinically appropriate.</em></p>';
+        }
+
+        let warningMessages = [];
+        let conversionResults = [];
+        let details = "";
+
+        let currentBasalObj = currentBasalInsulin ? getInsulinDataByName(currentBasalInsulin) : null;
+        let targetBasalObj = targetBasalInsulin ? getInsulinDataByName(targetBasalInsulin) : null;
+
+        let currentPremixObj = currentPremixedInsulin ? getInsulinDataByName(currentPremixedInsulin) : null;
+        let targetPremixObj = targetPremixedInsulin ? getInsulinDataByName(targetPremixedInsulin) : null;
+
+        // Call appropriate conversion function
+        if (currentRegime === 'basal' && targetRegime === 'basal') {
+            const resultObj = convertBasalToBasal(chosenReduction, currentBasalObj, targetBasalObj);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+            note += resultObj.note;
+
+        } else if (currentRegime === 'rapid' && targetRegime === 'rapid') {
+            const resultObj = convertRapidToRapid(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'premixed' && targetRegime === 'premixed') {
+            const resultObj = convertPremixedToPremixed(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'premixed' && targetRegime === 'basal_bolus') {
+            const resultObj = convertPremixedToBasalBolus(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'basal_bolus' && targetRegime === 'basal_bolus') {
+            const resultObj = convertBasalBolusToBasalBolus(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'basal_bolus' && targetRegime === 'basal') {
+            const resultObj = convertBasalBolusToBasal(chosenReduction, currentBasalObj, targetBasalObj);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+            note += resultObj.note;
+
+        } else if (currentRegime === 'premixed' && targetRegime === 'basal') {
+            const resultObj = convertPremixedToBasal(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'basal' && targetRegime === 'premixed') {
+            const resultObj = convertBasalToPremixed(chosenReduction);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'basal_bolus' && targetRegime === 'premixed') {
+            // Revised final version
+            const resultObj = convertBasalBolusToPremixed_Revised(chosenReduction, targetPremixedInsulin);
+            conversionResults.push(resultObj.result);
+            details += resultObj.details;
+
+        } else if (currentRegime === 'rapid') {
+            warningMessages.push('Converting from rapid-acting insulin only is not directly convertible. Suggest initiating basal insulin and titrating.');
+
+        } else if (targetRegime === 'rapid') {
+            warningMessages.push('Converting to rapid-acting insulin only is not directly convertible. Suggest initiating basal insulin and titrating.');
+
+        } else {
+            warningMessages.push('This conversion scenario is not directly supported.');
+        }
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '';
+
+        let finalHTML = '';
+
+        if (warningMessages.length > 0) {
+            finalHTML += '<div class="warning">' + warningMessages.join('<br>') + '</div>';
+        }
+
+        conversionResults.forEach(res => {
+            finalHTML += res;
+        });
+        finalHTML += note;
+
+        if (details) {
+            finalHTML += `<div class="calc-details"><h3>Calculation Details:</h3>${details}</div>`;
+        }
+
+        resultDiv.innerHTML = finalHTML;
+        document.getElementById('resultSection').style.display = 'block';
+    }
+
+    // Conversion functions for other scenarios
+    // These remain as previously provided with no placeholders:
+    function convertBasalToBasal(chosenReduction, currentBasalObj, targetBasalObj) {
+        const doses = getCurrentDoses('basal');
+        if (!doses) return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum, dose) => sum + dose.amount, 0);
+        const targetInsulin = document.getElementById('target_basal_insulin').value;
+        const targetFrequency = document.getElementById('target_basal_frequency').value;
+        if (!targetInsulin || !targetFrequency) {
+            alert('Please select target basal insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        // Apply Toujeo rules if needed
+        let toujeoCheck = applyToujeoRules(currentBasalObj, targetBasalObj, 'basal', 'basal', chosenReduction, totalDose);
+        chosenReduction = toujeoCheck.chosenReduction;
+        let extraNote = toujeoCheck.note;
+
+        const targetFreqCount = getFrequencyCount(targetFrequency);
+        const adjustedDose = Math.round(totalDose * chosenReduction);
+
+        let newDoses = [];
+        let distributionMethod = '';
+        if (doses.length === targetFreqCount) {
+            distributionMethod = 'Proportional (same ratio as original)';
+            doses.forEach(dose => {
+                const proportion = dose.amount / totalDose;
+                const newDoseAmount = Math.round(adjustedDose * proportion);
+                newDoses.push({ time: dose.time, amount: newDoseAmount });
+            });
+        } else {
+            distributionMethod = 'Equal split';
+            const splitDose = Math.round(adjustedDose / targetFreqCount);
+            dosageTimes.forEach(time => {
+                if (isTimeInFrequency(time, targetFrequency)) {
+                    newDoses.push({ time: time, amount: splitDose });
+                }
+            });
+        }
+
+        let result = `<strong>Converted Basal Insulin Doses:</strong><br>`;
+        newDoses.forEach(dose => {
+            result += `${dose.time}: ${dose.amount} units of ${targetInsulin}<br>`;
+        });
+
+        let details = `
+        <p><strong>Original TDD Basal:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction Factor:</strong> ${(chosenReduction*100).toFixed(0)}% of original</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Distribution Method:</strong> ${distributionMethod}</p>
+        `;
+
+        return {result, details, note:extraNote};
+    }
+
+    function convertRapidToRapid(chosenReduction) {
+        const doses = getCurrentDoses('rapid');
+        if (!doses) return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum, dose) => sum + dose.amount, 0);
+        const targetInsulin = document.getElementById('target_rapid_insulin').value;
+        const targetFrequency = document.getElementById('target_rapid_frequency').value;
+        if (!targetInsulin || !targetFrequency) {
+            alert('Please select target rapid insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        const targetFreqCount = getFrequencyCount(targetFrequency);
+        const adjustedDose = Math.round(totalDose * chosenReduction);
+
+        let newDoses = [];
+        let distributionMethod = '';
+        if (doses.length === targetFreqCount) {
+            distributionMethod = 'Proportional (same ratio)';
+            doses.forEach(dose => {
+                const proportion = dose.amount / totalDose;
+                const newDoseAmount = Math.round(adjustedDose * proportion);
+                newDoses.push({ time: dose.time, amount: newDoseAmount });
+            });
+        } else {
+            distributionMethod = 'Equal split';
+            const splitDose = Math.round(adjustedDose / targetFreqCount);
+            dosageTimes.forEach(time => {
+                if (isTimeInFrequency(time, targetFrequency)) {
+                    newDoses.push({ time: time, amount: splitDose });
+                }
+            });
+        }
+
+        let result = `<strong>Converted Rapid-Acting Insulin Doses:</strong><br>`;
+        newDoses.forEach(dose => {
+            result += `${dose.time}: ${dose.amount} units of ${targetInsulin}<br>`;
+        });
+
+        let details = `
+        <p><strong>Original TDD Rapid:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction Factor:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Distribution:</strong> ${distributionMethod}</p>
+        `;
+        return {result, details, note:''};
+    }
+
+    function convertPremixedToPremixed(chosenReduction) {
+        const doses = getCurrentDoses('premixed');
+        if (!doses) return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum, dose) => sum + dose.amount, 0);
+        const targetInsulin = document.getElementById('target_premixed_insulin').value;
+        const targetFrequency = document.getElementById('target_premixed_frequency').value;
+        if (!targetInsulin || !targetFrequency) {
+            alert('Please select target premixed insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        const targetFreqCount = getFrequencyCount(targetFrequency);
+        const adjustedDose = Math.round(totalDose * chosenReduction);
+
+        let newDoses = [];
+        let distributionMethod = '';
+        if (doses.length === targetFreqCount) {
+            distributionMethod = 'Proportional (same ratio)';
+            doses.forEach(dose => {
+                const proportion = dose.amount / totalDose;
+                const newDoseAmount = Math.round(adjustedDose * proportion);
+                newDoses.push({ time: dose.time, amount: newDoseAmount });
+            });
+        } else {
+            distributionMethod = 'Equal split';
+            const splitDose = Math.round(adjustedDose / targetFreqCount);
+            dosageTimes.forEach(time => {
+                if (isTimeInFrequency(time, targetFrequency)) {
+                    newDoses.push({ time: time, amount: splitDose });
+                }
+            });
+        }
+
+        let result = `<strong>Converted Premixed Insulin Doses:</strong><br>`;
+        newDoses.forEach(dose => {
+            result += `${dose.time}: ${dose.amount} units of ${targetInsulin}<br>`;
+        });
+
+        let details = `
+        <p><strong>Original TDD Premixed:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction Factor:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Distribution:</strong> ${distributionMethod}</p>
+        `;
+        return {result, details, note:''};
+    }
+
+    function convertPremixedToBasalBolus(chosenReduction) {
+        // Instructions:
+        // Total premix TDD -> reduce by factor
+        // Split into basal and rapid based on premix type:
+        // Humulin M3/Hypurin/NovoMix30: 70% basal, 30% rapid
+        // Humalog Mix25: 75% basal, 25% rapid
+        // Humalog Mix50: 50% basal, 50% rapid
+        const doses = getCurrentDoses('premixed');
+        if (!doses) return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum,d)=>sum+d.amount,0);
+
+        const currentInsulin = document.getElementById('current_premixed_insulin').value;
+        const targetBasalInsulin = document.getElementById('target_basal_insulin')?.value;
+        const targetBasalFrequency = document.getElementById('target_basal_frequency')?.value;
+        const targetRapidInsulin = document.getElementById('target_rapid_insulin')?.value;
+        const targetRapidFrequency = document.getElementById('target_rapid_frequency')?.value;
+
+        if(!targetBasalInsulin||!targetBasalFrequency||!targetRapidInsulin||!targetRapidFrequency){
+            alert('Please select all target basal and rapid insulins and frequencies.');
+            return {result:'',details:'',note:''};
+        }
+
+        let ratio = getPremixRatio(currentInsulin);
+        const basalPerc = ratio.intermediate; // The "basal" component in premix
+        const rapidPerc = ratio.rapidOrShort;
+
+        const adjustedDose = Math.round(totalDose * chosenReduction);
+        const basalDose = adjustedDose * basalPerc;
+        const rapidDose = adjustedDose * rapidPerc;
+
+        const basalObj = distributeProportionalOrEqual(basalDose, targetBasalFrequency);
+        const rapidObj = distributeProportionalOrEqual(rapidDose, targetRapidFrequency);
+
+        let result = `<strong>Converted to Basal-Bolus:</strong><br><strong>Basal:</strong><br>`;
+        basalObj.newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetBasalInsulin}<br>`;
+        });
+        result += `<br><strong>Rapid-Acting:</strong><br>`;
+        rapidObj.newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetRapidInsulin}<br>`;
+        });
+
+        let details = `
+        <p><strong>Original TDD Premixed:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Basal %:</strong> ${basalPerc*100}%, Rapid %: ${rapidPerc*100}%</p>
+        <p><strong>Basal Distribution:</strong> ${basalObj.distributionMethod}</p>
+        <p><strong>Rapid Distribution:</strong> ${rapidObj.distributionMethod}</p>
+        `;
+
+        return {result, details, note:''};
+    }
+
+    function convertBasalBolusToBasalBolus(chosenReduction) {
+        const basalDoses = getCurrentDoses('basal');
+        const rapidDoses = getCurrentDoses('rapid');
+        if (!basalDoses || !rapidDoses) return {result:'',details:'',note:''};
+
+        const totalBasal = basalDoses.reduce((sum,d)=>sum+d.amount,0);
+        const totalRapid = rapidDoses.reduce((sum,d)=>sum+d.amount,0);
+
+        const targetBasalInsulin = document.getElementById('target_basal_insulin').value;
+        const targetBasalFrequency = document.getElementById('target_basal_frequency').value;
+        const targetRapidInsulin = document.getElementById('target_rapid_insulin').value;
+        const targetRapidFrequency = document.getElementById('target_rapid_frequency').value;
+
+        if(!targetBasalInsulin || !targetBasalFrequency || !targetRapidInsulin || !targetRapidFrequency){
+            alert('Please select target basal and rapid insulins and frequencies.');
+            return {result:'',details:'',note:''};
+        }
+
+        const basalObj = proportionalOrEqualDistribution(basalDoses, totalBasal, chosenReduction, targetBasalFrequency);
+        const rapidObj = proportionalOrEqualDistribution(rapidDoses, totalRapid, chosenReduction, targetRapidFrequency);
+
+        let result = `<strong>Converted Basal-Bolus Doses:</strong><br><strong>Basal:</strong><br>`;
+        basalObj.newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetBasalInsulin}<br>`;
+        });
+        result += `<br><strong>Rapid:</strong><br>`;
+        rapidObj.newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetRapidInsulin}<br>`;
+        });
+
+        let details = `
+        <p><strong>Original TDD Basal:</strong> ${totalBasal} units</p>
+        <p><strong>Original TDD Rapid:</strong> ${totalRapid} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Basal Distribution:</strong> ${basalObj.distributionMethod}</p>
+        <p><strong>Rapid Distribution:</strong> ${rapidObj.distributionMethod}</p>
+        `;
+
+        return {result, details, note:''};
+    }
+
+    function convertBasalBolusToBasal(chosenReduction, currentBasalObj, targetBasalObj) {
+        const basalDoses = getCurrentDoses('basal');
+        const rapidDoses = getCurrentDoses('rapid');
+        if(!basalDoses || !rapidDoses) return {result:'',details:'',note:''};
+        const totalBasal = basalDoses.reduce((sum,d)=>sum+d.amount,0);
+
+        const targetBasalInsulin = document.getElementById('target_basal_insulin').value;
+        const targetBasalFrequency = document.getElementById('target_basal_frequency').value;
+        if(!targetBasalInsulin||!targetBasalFrequency){
+            alert('Please select target basal insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        let toujeoCheck = applyToujeoRules(currentBasalObj, targetBasalObj, 'basal_bolus', 'basal', chosenReduction, totalBasal);
+        chosenReduction = toujeoCheck.chosenReduction;
+        let extraNote = toujeoCheck.note;
+
+        const adjustedDose = Math.round(totalBasal * chosenReduction);
+        let newDoses = [];
+        let distributionMethod = '';
+        const freqCount = getFrequencyCount(targetBasalFrequency);
+        if(basalDoses.length===freqCount){
+            distributionMethod='Proportional';
+            basalDoses.forEach(d=>{
+                const prop = d.amount/totalBasal;
+                newDoses.push({time:d.time, amount:Math.round(adjustedDose*prop)});
+            });
+        } else {
+            distributionMethod='Equal split';
+            const split = Math.round(adjustedDose/freqCount);
+            dosageTimes.forEach(time=>{
+                if(isTimeInFrequency(time, targetBasalFrequency)) {
+                    newDoses.push({time:time, amount:split});
+                }
+            });
+        }
+
+        let result = `<strong>Converted to Basal Only:</strong><br>`;
+        newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetBasalInsulin}<br>`;
+        });
+        result += `<br><span class="warning">Rapid acting insulin removed. This is deintensification. Monitor glucose closely.</span>`;
+
+        let details = `
+        <p><strong>Original TDD Basal:</strong> ${totalBasal} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted Dose:</strong> ${adjustedDose} units</p>
+        <p><strong>Distribution:</strong> ${distributionMethod}</p>
+        `;
+
+        return {result, details, note:extraNote};
+    }
+
+    function convertPremixedToBasal(chosenReduction) {
+        const doses = getCurrentDoses('premixed');
+        if(!doses)return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum,d)=>sum+d.amount,0);
+
+        const currentInsulin = document.getElementById('current_premixed_insulin').value;
+        const targetBasalInsulin = document.getElementById('target_basal_insulin').value;
+        const targetBasalFrequency = document.getElementById('target_basal_frequency').value;
+        if(!targetBasalInsulin||!targetBasalFrequency){
+            alert('Select target basal insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        let ratio = getPremixRatio(currentInsulin);
+        let basalPercentage;
+        // We already have exact ratios from ratio object: intermediate=ratio.intermediate (basal), rapid=ratio.rapidOrShort
+        // For converting premix to basal only: we use the basal % from the premix ratio instructions given previously:
+        // Actually original instructions for premixed to basal:
+        // Humulin M3/Hypurin Porcine/NovoMix30: 70% basal
+        // Humalog Mix25: 75% basal
+        // Humalog Mix50: 50% basal
+        // We can just use ratio.intermediate as the basal fraction:
+        basalPercentage = ratio.intermediate; 
+
+        const adjustedDose = Math.round(totalDose*chosenReduction);
+        const basalDose = Math.round(adjustedDose*basalPercentage);
+
+        let basalObj = distributeProportionalOrEqual(basalDose, targetBasalFrequency);
+
+        let result = `<strong>Converted to Basal Only:</strong><br>`;
+        basalObj.newDoses.forEach(dose=>{
+            result += `${dose.time}: ${dose.amount} units of ${targetBasalInsulin}<br>`;
+        });
+        result += `<br><span class="warning">No rapid acting insulin accounted. Add as needed.</span>`;
+
+        let details = `
+        <p><strong>Original TDD Premixed:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Basal Percentage:</strong> ${basalPercentage*100}%</p>
+        <p><strong>Distribution Method:</strong> ${basalObj.distributionMethod}</p>
+        `;
+
+        return {result, details, note:''};
+    }
+
+    function convertBasalToPremixed(chosenReduction) {
+        const doses = getCurrentDoses('basal');
+        if(!doses)return {result:'',details:'',note:''};
+        const totalDose = doses.reduce((sum,d)=>sum+d.amount,0);
+
+        const targetPremixInsulin = document.getElementById('target_premixed_insulin').value;
+        const targetPremixFrequency = document.getElementById('target_premixed_frequency').value;
+        if(!targetPremixInsulin||!targetPremixFrequency){
+            alert('Select target premixed insulin and frequency.');
+            return {result:'',details:'',note:''};
+        }
+
+        const adjustedDose = Math.round(totalDose * chosenReduction);
+        const freqCount = getFrequencyCount(targetPremixFrequency);
+        const split = Math.round(adjustedDose/freqCount);
+        let newDoses = [];
+        dosageTimes.forEach(time=>{
+            if(isTimeInFrequency(time, targetPremixFrequency)) {
+                newDoses.push({time:time, amount:split});
+            }
+        });
+
+        let result = `<strong>Converted Basal to Premixed:</strong><br>`;
+        newDoses.forEach(d=>{
+            result+=`${d.time}: ${d.amount} units of ${targetPremixInsulin}<br>`;
+        });
+        result+=`<br><span class="warning">This is not a direct conversion. Premixed now includes rapid acting component. Monitor and adjust.</span>`;
+
+        let details=`
+        <p><strong>Original TDD Basal:</strong> ${totalDose} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted TDD:</strong> ${adjustedDose} units</p>
+        <p><strong>Distribution: Equal split</strong></p>
+        `;
+
+        return {result, details, note:''};
+    }
+
+    // Revised Basal Bolus → Premixed function as per new instructions:
+    function convertBasalBolusToPremixed_Revised(chosenReduction, targetPremixInsulin) {
+        const basalDoses = getCurrentDoses('basal');
+        const rapidDoses = getCurrentDoses('rapid');
+        if (!basalDoses || !rapidDoses) {
+            return {result:'', details:''};
+        }
+
+        const totalBasalDose = basalDoses.reduce((sum, dose) => sum + dose.amount, 0);
+        const totalRapidDose = rapidDoses.reduce((sum, dose) => sum + dose.amount, 0);
+
+        const targetPremixFrequency = document.getElementById('target_premixed_frequency')?.value;
+        if (!targetPremixInsulin || !targetPremixFrequency) {
+            alert('Please select target premixed insulin and frequency.');
+            return {result:'',details:''};
+        }
+
+        const targetFreqCount = getFrequencyCount(targetPremixFrequency);
+        const adjustedBasalDose = Math.round(totalBasalDose * chosenReduction);
+
+        // Distribution according to instructions:
+        // If multiple basal doses previously, use that proportion for morning/evening.
+        // If once daily basal, use rapid morning/evening proportion.
+        // Attempt to place doses into morning/evening as per target frequency.
+
+        let newDoses = [];
+        let distributionMethod = '';
+        let timesForFrequency = dosageTimes.filter(t => isTimeInFrequency(t, targetPremixFrequency));
+
+        const basalCount = basalDoses.length;
+        let morningProp = 0;
+        let eveningProp = 0;
+
+        if (basalCount > 1) {
+            // Use basal proportions
+            let totalMorningBasal = basalDoses.filter(d=>d.time.toLowerCase()==='morning').reduce((s,d)=>s+d.amount,0);
+            let totalEveningBasal = basalDoses.filter(d=>(d.time.toLowerCase()==='evening' || d.time.toLowerCase()==='bedtime')).reduce((s,d)=>s+d.amount,0);
+
+            let totalRelevantBasal = totalMorningBasal + totalEveningBasal;
+            if (totalRelevantBasal===0) {
+                // no clear morning/evening pattern
+                distributionMethod='Equal split (no clear basal pattern)';
+                const split = Math.round(adjustedBasalDose / targetFreqCount);
+                timesForFrequency.forEach(time => {
+                    newDoses.push({time:time, amount:split});
+                });
+            } else {
+                distributionMethod='Proportion based on previous basal morning/evening ratio';
+                morningProp = totalMorningBasal / totalRelevantBasal;
+                eveningProp = totalEveningBasal / totalRelevantBasal;
+
+                let morningSlot = timesForFrequency.find(t=>t.toLowerCase()==='morning');
+                let eveningSlot = timesForFrequency.find(t=>t.toLowerCase()==='evening');
+
+                const morningDose = Math.round(adjustedBasalDose * morningProp);
+
+                if (morningSlot && eveningSlot) {
+                    newDoses.push({time:morningSlot, amount:morningDose});
+                    newDoses.push({time:eveningSlot, amount:adjustedBasalDose - morningDose});
+                } else if (morningSlot && !eveningSlot) {
+                    newDoses.push({time:morningSlot, amount:adjustedBasalDose});
+                } else if (!morningSlot && eveningSlot) {
+                    newDoses.push({time:eveningSlot, amount:adjustedBasalDose});
+                } else {
+                    distributionMethod+=' (No morning/evening match in target frequency, fallback equal)'
+                    const split = Math.round(adjustedBasalDose / targetFreqCount);
+                    timesForFrequency.forEach(time => {
+                        newDoses.push({time:time, amount:split});
+                    });
+                }
+            }
+
+        } else {
+            // Basal once daily
+            // Use rapid morning/evening proportion
+            let totalMorningRapid = rapidDoses.filter(d=>d.time.toLowerCase()==='morning').reduce((s,d)=>s+d.amount,0);
+            let totalEveningRapid = rapidDoses.filter(d=>d.time.toLowerCase()==='evening').reduce((s,d)=>s+d.amount,0);
+            let totalRelevantRapid = totalMorningRapid + totalEveningRapid;
+
+            if (totalRelevantRapid===0) {
+                distributionMethod='Equal split (no morning/evening rapid pattern)';
+                const split = Math.round(adjustedBasalDose / targetFreqCount);
+                timesForFrequency.forEach(time => {
+                    newDoses.push({time:time, amount:split});
+                });
+            } else {
+                distributionMethod='Proportion based on previous rapid morning/evening ratio';
+                morningProp = totalMorningRapid / totalRelevantRapid;
+                eveningProp = totalEveningRapid / totalRelevantRapid;
+
+                let morningSlot = timesForFrequency.find(t=>t.toLowerCase()==='morning');
+                let eveningSlot = timesForFrequency.find(t=>t.toLowerCase()==='evening');
+
+                const morningDose = Math.round(adjustedBasalDose * morningProp);
+                if (morningSlot && eveningSlot) {
+                    newDoses.push({time:morningSlot, amount:morningDose});
+                    newDoses.push({time:eveningSlot, amount:adjustedBasalDose - morningDose});
+                } else if (morningSlot && !eveningSlot) {
+                    newDoses.push({time:morningSlot, amount:adjustedBasalDose});
+                } else if (!morningSlot && eveningSlot) {
+                    newDoses.push({time:eveningSlot, amount:adjustedBasalDose});
+                } else {
+                    distributionMethod+=' (No morning/evening match in target frequency, fallback equal)'
+                    const split = Math.round(adjustedBasalDose / targetFreqCount);
+                    timesForFrequency.forEach(time => {
+                        newDoses.push({time:time, amount:split});
+                    });
+                }
+            }
+        }
+
+        const ratio = getPremixRatio(targetPremixInsulin);
+        let result = `<strong>Converted Basal-Bolus to Premixed (Based on Basal Component Only):</strong><br>`;
+        newDoses.forEach(d=>{
+            result += `${d.time}: ${d.amount} units of ${targetPremixInsulin}<br>`;
+        });
+
+        result += `<br><span class="warning">No direct conversion is possible. This calculation converts only the basal component into a premixed insulin.</span><br>`;
+        result += `<p>You had previously ${totalBasalDose} units basal and ${totalRapidDose} units rapid daily. Now you have a premixed insulin (${targetPremixInsulin}) with a fixed ratio of ${ratio.name}.</p>`;
+        result += `<p>We maintained the dose proportion based on your previous ${basalDoses.length>1?'basal distribution':'rapid distribution'} (morning/evening). Adjust and monitor glucose closely.</p>`;
+
+        let details=`
+        <p><strong>Original Basal TDD:</strong> ${totalBasalDose} units</p>
+        <p><strong>Original Rapid TDD:</strong> ${totalRapidDose} units</p>
+        <p><strong>Chosen Reduction:</strong> ${(chosenReduction*100).toFixed(0)}%</p>
+        <p><strong>Adjusted Basal TDD for Premix:</strong> ${adjustedBasalDose} units</p>
+        <p><strong>Distribution:</strong> ${distributionMethod}</p>
+        <p><strong>Premix Ratio:</strong> ${ratio.name}</p>
+        `;
+
+        return {result, details};
+    }
+
+    function distributeProportionalOrEqual(totalDose, frequency) {
+        // Simple function for equal split since we have no original proportion here
+        let freqCount = getFrequencyCount(frequency);
+        let distributionMethod='Equal split';
+        const split = Math.round(totalDose/freqCount);
+        let newDoses=[];
+        dosageTimes.forEach(time=>{
+            if(isTimeInFrequency(time, frequency)){
+                newDoses.push({time:time, amount:split});
+            }
+        });
+        return {newDoses, distributionMethod};
+    }
+
+    function proportionalOrEqualDistribution(doses, totalDose, chosenReduction, frequency) {
+        const adjustedDose = Math.round(totalDose*chosenReduction);
+        const freqCount = getFrequencyCount(frequency);
+        let newDoses=[];
+        let distributionMethod='';
+        if (doses.length===freqCount){
+            distributionMethod='Proportional';
+            doses.forEach(d=>{
+                const proportion = d.amount/totalDose;
+                newDoses.push({time:d.time, amount:Math.round(adjustedDose*proportion)});
+            });
+        } else {
+            distributionMethod='Equal split';
+            const split = Math.round(adjustedDose/freqCount);
+            dosageTimes.forEach(time=>{
+                if(isTimeInFrequency(time,frequency)){
+                    newDoses.push({time:time, amount:split});
+                }
+            });
+        }
+        return {newDoses, distributionMethod};
+    }
+
+</script>
+
+</body>
+</html>
